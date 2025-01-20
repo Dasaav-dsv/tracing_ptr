@@ -1,5 +1,5 @@
 use std::{
-    num::NonZeroU64,
+    num::{NonZero, NonZeroUsize},
     ops::BitAnd,
     ptr::NonNull,
     sync::{Arc, Mutex},
@@ -36,10 +36,7 @@ impl<T> TracePtr for NonNull<T> {
         }
 
         let trace_index = TRACING_MANAGER
-            .insert(new_tracer(
-                NonZeroU64::new(self.addr().get() as _).unwrap(),
-                f,
-            ))
+            .insert(new_tracer(self.addr(), f))
             .ok_or(TraceError::TooManyTracers)?;
 
         *self = self.map_addr(|a| a | (trace_index.get() << 47));
@@ -57,10 +54,7 @@ impl<T> TracePtr for NonNull<T> {
         }
 
         let trace_index = TRACING_MANAGER
-            .insert(new_tracer_mut(
-                NonZeroU64::new(self.addr().get() as _).unwrap(),
-                f,
-            ))
+            .insert(new_tracer_mut(self.addr(), f))
             .ok_or(TraceError::TooManyTracers)?;
 
         *self = self.map_addr(|a| a | (trace_index.get() << 47));
@@ -96,8 +90,9 @@ impl<T> TracePtr for *const T {
     where
         F: Fn(Self::Context<'_>) + Send + Sync + 'static,
     {
-        let non_null_addr =
-            NonZeroU64::new(self.addr() as _).ok_or(TraceError::TriedTracingNull)?;
+        let non_null_addr = NonNull::new(self)
+            .ok_or(TraceError::TriedTracingNull)?
+            .addr();
 
         if self.is_trace_ptr() {
             return Err(TraceError::AlreadyTraced);
@@ -117,8 +112,9 @@ impl<T> TracePtr for *const T {
     where
         F: FnMut(Self::Context<'_>) + Send + 'static,
     {
-        let non_null_addr =
-            NonZeroU64::new(self.addr() as _).ok_or(TraceError::TriedTracingNull)?;
+        let non_null_addr = NonNull::new(self)
+            .ok_or(TraceError::TriedTracingNull)?
+            .addr();
 
         if self.is_trace_ptr() {
             return Err(TraceError::AlreadyTraced);
@@ -161,8 +157,9 @@ impl<T> TracePtr for *mut T {
     where
         F: Fn(Self::Context<'_>) + Send + Sync + 'static,
     {
-        let non_null_addr =
-            NonZeroU64::new(self.addr() as _).ok_or(TraceError::TriedTracingNull)?;
+        let non_null_addr = NonNull::new(self)
+            .ok_or(TraceError::TriedTracingNull)?
+            .addr();
 
         if self.is_trace_ptr() {
             return Err(TraceError::AlreadyTraced);
@@ -182,8 +179,9 @@ impl<T> TracePtr for *mut T {
     where
         F: FnMut(Self::Context<'_>) + Send + 'static,
     {
-        let non_null_addr =
-            NonZeroU64::new(self.addr() as _).ok_or(TraceError::TriedTracingNull)?;
+        let non_null_addr = NonNull::new(self)
+            .ok_or(TraceError::TriedTracingNull)?
+            .addr();
 
         if self.is_trace_ptr() {
             return Err(TraceError::AlreadyTraced);
@@ -218,19 +216,15 @@ impl<T> TracePtr for *mut T {
 }
 
 #[inline]
-fn new_tracer<F>(traced_addr: NonZeroU64, f: F) -> Arc<Tracer>
+fn new_tracer<F>(traced_addr: NonZeroUsize, f: F) -> Arc<Tracer>
 where
     F: Fn(TraceContext<'_>) + Send + Sync + 'static,
 {
     Arc::new(
         move |instruction, instruction_info, context, accessed_addr| {
             f(TraceContext {
-                ip: instruction
-                    .ip()
-                    .try_into()
-                    .expect("non-zero instruction pointer"),
                 traced_addr,
-                accessed_addr: accessed_addr.try_into().expect("non-zero address"),
+                accessed_addr: NonZero::try_from(accessed_addr as usize).expect("non-zero address"),
                 instruction,
                 instruction_info,
                 context,
@@ -240,7 +234,7 @@ where
 }
 
 #[inline]
-fn new_tracer_mut<F>(traced_addr: NonZeroU64, f: F) -> Arc<Tracer>
+fn new_tracer_mut<F>(traced_addr: NonZeroUsize, f: F) -> Arc<Tracer>
 where
     F: FnMut(TraceContext<'_>) + Send + 'static,
 {
@@ -248,12 +242,8 @@ where
     Arc::new(
         move |instruction, instruction_info, context, accessed_addr| {
             mutex.lock().unwrap()(TraceContext {
-                ip: instruction
-                    .ip()
-                    .try_into()
-                    .expect("non-zero instruction pointer"),
                 traced_addr,
-                accessed_addr: accessed_addr.try_into().expect("non-zero address"),
+                accessed_addr: NonZero::try_from(accessed_addr as usize).expect("non-zero address"),
                 instruction,
                 instruction_info,
                 context,

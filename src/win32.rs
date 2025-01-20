@@ -63,7 +63,7 @@ mod tests_win32 {
 
         ptr.try_trace_mut(move |c| {
             assert_eq!(
-                unsafe { ptr::with_exposed_provenance::<i32>(c.accessed_addr.get() as _).read() },
+                unsafe { ptr::with_exposed_provenance::<i32>(c.accessed_addr.get()).read() },
                 values.pop().unwrap()
             )
         })
@@ -95,9 +95,8 @@ mod tests_win32 {
             .try_trace({
                 let old_y = old_y.clone();
                 move |c| {
-                    *old_y.lock().unwrap() = unsafe {
-                        ptr::with_exposed_provenance::<i32>(c.accessed_addr.get() as _).read()
-                    }
+                    *old_y.lock().unwrap() =
+                        unsafe { ptr::with_exposed_provenance::<i32>(c.accessed_addr.get()).read() }
                 }
             })
             .unwrap();
@@ -126,7 +125,7 @@ mod tests_win32 {
         ptr.try_trace(|c| unsafe {
             assert_eq!(
                 (mem::transmute::<_, fn(i32) -> i32>(ptr::with_exposed_provenance::<()>(
-                    c.accessed_addr.get() as _
+                    c.accessed_addr.get()
                 )))(4),
                 16
             )

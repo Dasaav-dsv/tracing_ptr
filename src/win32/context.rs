@@ -1,6 +1,6 @@
 use std::{
     arch::x86_64::{__m128, _mm_loadu_ps},
-    num::NonZeroU64,
+    num::NonZeroUsize,
 };
 
 use windows::Win32::System::Diagnostics::Debug::{CONTEXT, M128A};
@@ -9,9 +9,8 @@ use iced_x86::{Instruction, InstructionInfo, Register, UsedMemory};
 
 #[derive(Clone)]
 pub struct TraceContext<'a> {
-    pub traced_addr: NonZeroU64,
-    pub accessed_addr: NonZeroU64,
-    pub ip: NonZeroU64,
+    pub traced_addr: NonZeroUsize,
+    pub accessed_addr: NonZeroUsize,
     pub instruction: &'a Instruction,
     pub instruction_info: &'a InstructionInfo,
     pub context: &'a CONTEXT,
@@ -124,7 +123,6 @@ impl std::fmt::Debug for TraceContext<'_> {
         f.debug_struct("TraceContext")
             .field("traced_addr", &self.traced_addr)
             .field("accessed_addr", &self.accessed_addr)
-            .field("ip", &self.ip)
             .field("instruction", &self.instruction)
             .field("instruction_info", &self.instruction_info)
             .finish_non_exhaustive()
