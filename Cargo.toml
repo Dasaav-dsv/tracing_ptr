@@ -1,0 +1,22 @@
+[package]
+name = "tracing_ptr"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+iced-x86 = { version = "1.21.0", default-features = false, features = ["std", "decoder", "instr_info"] }
+boxcar = "0.2.8"
+crossbeam-queue = "0.3.12"
+
+[dependencies.windows]
+version = "0.59"
+features = [
+    "Win32_System_Console",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_Kernel",
+    "Win32_System_Memory",
+    "Win32_System_Performance",
+    "Win32_Security",
+    "Win32_System_Threading",
+    "Win32_System_LibraryLoader",
+]
